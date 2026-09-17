@@ -1,0 +1,16 @@
+{
+  "name": "カラオケビンゴ",
+  "short_name": "カラオケビンゴ",
+  "description": "87〜96点の抽選で3×3のカードを作り、その点数をカラオケで出せたらマスを開けるビンゴ。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E0B16",
+  "theme_color": "#0E0B16",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
