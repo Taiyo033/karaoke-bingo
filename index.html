@@ -41,6 +41,7 @@
     --gold-soft:rgba(255,198,75,.14);
     --aqua:#54E6DC;
     --aqua-soft:rgba(84,230,220,.13);
+    --warn:#FF9270;
     --r-cell:15px;
     color-scheme:dark;
   }
@@ -142,6 +143,51 @@
   }
   .hint b{color:var(--ink);font-weight:700;white-space:nowrap}
   .hint .lines{color:var(--aqua);font-weight:700;white-space:nowrap}
+
+  /* ---- score entry ---- */
+  .entrywrap{display:flex;flex-direction:column;gap:7px}
+  .entry{display:flex;gap:8px;align-items:stretch}
+  .field{
+    flex:1;min-width:0;
+    display:flex;align-items:center;gap:8px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:rgba(255,255,255,.025);
+    padding:0 14px;
+    min-height:54px;
+    transition:border-color .2s,box-shadow .2s;
+  }
+  .field:focus-within{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 22px var(--gold-soft)}
+  .field .tag{
+    flex:none;
+    font-size:11px;font-weight:700;letter-spacing:.14em;
+    color:var(--ink-faint);white-space:nowrap;
+  }
+  .field input{
+    flex:1;min-width:0;
+    background:none;border:0;outline:none;padding:0;
+    -webkit-appearance:none;appearance:none;
+    color:var(--ink);
+    font-family:Antonio,"Zen Kaku Gothic New",sans-serif;
+    font-size:30px;font-weight:600;line-height:1;
+    font-variant-numeric:tabular-nums;
+    text-align:right;
+  }
+  .field input::placeholder{color:var(--ink-faint);font-weight:400}
+  .field .suffix{flex:none;font-size:13px;font-weight:700;color:var(--ink-dim)}
+  .btn-enter{
+    flex:none;
+    min-width:88px;min-height:54px;
+    border-radius:12px;
+    background:var(--gold);color:#2A1A00;
+    font-size:15px;font-weight:700;letter-spacing:.03em;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:transform .12s,opacity .2s;
+  }
+  .btn-enter:active{transform:scale(.97)}
+  .entry-msg{margin:0;font-size:12.5px;line-height:1.5;color:var(--warn)}
+  .entry-msg.info{color:var(--ink-dim)}
 
   /* ---- board ---- */
   .boardwrap{position:relative}
@@ -326,6 +372,24 @@
   .btn-primary{background:var(--neon);color:#1A0410}
   .btn-gold{background:var(--gold);color:#2A1A00}
   .btn-ghost{border:1px solid var(--line);color:var(--ink-dim)}
+  .minigrid{display:grid;gap:5px;grid-template-columns:repeat(3,1fr)}
+  .minigrid.four{grid-template-columns:repeat(4,1fr)}
+  .mini{
+    aspect-ratio:1;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:rgba(255,255,255,.02);
+    color:var(--ink-faint);
+    font-family:Antonio,sans-serif;
+    font-size:15px;font-weight:500;
+    font-variant-numeric:tabular-nums;
+    transition:background .18s,color .18s,border-color .18s;
+  }
+  .mini.taken{color:var(--gold);border-color:rgba(255,198,75,.38);background:var(--gold-soft)}
+  .mini.cand{color:var(--ink);border-color:var(--gold);cursor:pointer}
+  .mini.cand:active{transform:scale(.95)}
+  .mini.sel{background:var(--gold);color:#2A1A00;font-weight:700;box-shadow:0 0 18px var(--gold-soft)}
   .picks{display:flex;gap:10px}
   .pick{
     flex:1;
@@ -384,6 +448,20 @@
 
   <p class="hint" id="hint"></p>
 
+  <div class="entrywrap" id="entrywrap" hidden>
+    <form class="entry" id="entry" novalidate>
+      <div class="field">
+        <span class="tag">出た点数</span>
+        <input id="scoreInput" type="text" inputmode="numeric" pattern="[0-9]*"
+               maxlength="3" autocomplete="off" autocorrect="off" spellcheck="false"
+               placeholder="--" aria-label="出た点数">
+        <span class="suffix">点</span>
+      </div>
+      <button class="btn-enter" id="enterBtn" type="submit">開ける</button>
+    </form>
+    <p class="entry-msg" id="entryMsg" hidden role="status"></p>
+  </div>
+
   <div class="boardwrap">
     <div class="board" id="board" role="grid" aria-label="ビンゴカード"></div>
     <div class="cta" id="cta" hidden aria-hidden="true"><span>画面をタップして抽選</span></div>
@@ -403,9 +481,10 @@
 
 <div class="veil" id="veilOpen" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="openTitle">
-    <h2 id="openTitle">このマスを開けますか？</h2>
+    <h2 id="openTitle">この点数で開けますか？</h2>
     <div class="bigscore" id="openScore">—<span>点</span></div>
-    <p>この点数が出たら開けられます。開けたマスは元に戻せません。</p>
+    <div class="minigrid" id="miniGrid" hidden></div>
+    <p id="openBody">開けたマスは元に戻せません。</p>
     <button class="btn btn-gold" id="openYes" type="button">開ける</button>
     <button class="btn btn-ghost" id="openNo" type="button">やめる</button>
   </div>
@@ -447,8 +526,8 @@
     return L;
   }
   var MODES={
-    "3":{side:3,n:9,scores:[87,88,89,90,91,92,93,94,95,96],unique:true,center:4,lines:lines(3)},
-    "4":{side:4,n:16,scores:[87,88,89,90,91,92,93,94,95],unique:false,center:-1,lines:lines(4)}
+    "3":{side:3,n:9,scores:[87,88,89,90,91,92,93,94,95,96],unique:true,center:4,tap:true,lines:lines(3)},
+    "4":{side:4,n:16,scores:[87,88,89,90,91,92,93,94,95],unique:false,center:-1,tap:false,lines:lines(4)}
   };
   var KEY="karaoke-bingo-v2";
   var OLD3="karaoke-bingo-3x3-v1", OLD4="karaoke-bingo-4x4-v1";
@@ -457,8 +536,10 @@
   var mode="3";
   var CARD={"3":null,"4":null};
   var busy=false;
-  var pendingOpen=null;
-  var fxPop=-1;
+  var pendingList=null;     // 確認中の候補マス
+  var pendingPick=null;     // そのうち開けるマス
+  var pendingScore=null;
+  var fxPop={};
   var fxCheer={};
 
   function M(){ return MODES[mode]; }
@@ -474,8 +555,15 @@
     segCreate:document.getElementById("segCreate"),
     segBingo:document.getElementById("segBingo"),
     segReset:document.getElementById("segReset"),
+    entrywrap:document.getElementById("entrywrap"),
+    entry:document.getElementById("entry"),
+    scoreInput:document.getElementById("scoreInput"),
+    entryMsg:document.getElementById("entryMsg"),
     veilOpen:document.getElementById("veilOpen"),
     openScore:document.getElementById("openScore"),
+    openTitle:document.getElementById("openTitle"),
+    openBody:document.getElementById("openBody"),
+    miniGrid:document.getElementById("miniGrid"),
     veilCenter:document.getElementById("veilCenter"),
     picks:document.getElementById("picks"),
     veilFinish:document.getElementById("veilFinish"),
@@ -756,11 +844,11 @@
             can=(c.score===null&&!busy);
             label="抽選をはじめる";
           }
-        }else if(s.phase==="bingo"){
+        }else if(s.phase==="bingo"&&cfg.tap){
           can=!c.open;
         }
-        var b=document.createElement("button");
-        b.type="button";
+        var b=document.createElement(can?"button":"div");
+        if(can) b.type="button"; else b.setAttribute("role","gridcell");
         b.className="cell";
         var n=document.createElement("span");
         n.className="n";
@@ -776,11 +864,11 @@
           label=c.score+"点 "+(c.open?"クリア済み":"未クリア");
         }
         if(c.open) b.classList.add("open");
-        if(c.open&&i===fxPop) b.classList.add("pop");
+        if(c.open&&fxPop[i]) b.classList.add("pop");
         if(lit.set[i]) b.classList.add("in-line");
         if(lit.set[i]&&fxCheer[i]) b.classList.add("cheer");
         if(can){ b.classList.add("tappable"); b.addEventListener("click",function(){ onCell(i); }); }
-        else { b.classList.add("locked"); b.disabled=true; }
+        else if(s.phase==="create"||(s.phase==="bingo"&&cfg.tap)) b.classList.add("locked");
         if(label) b.setAttribute("aria-label",label);
         b.appendChild(n);
         el.board.appendChild(b);
@@ -788,6 +876,7 @@
     }
 
     el.cta.hidden=!(!cfg.unique&&s.phase==="create"&&!busy);
+    el.entrywrap.hidden=(cfg.tap||s.phase!=="bingo"||openCount()===cfg.n);
 
     el.chips.innerHTML="";
     if(cfg.unique){
@@ -840,7 +929,8 @@
       var o=openCount();
       if(o===cfg.n) return "<b>全マスクリア！</b>お疲れさま。リセットで次のカードへ。";
       var head=(linesCount>0)?"<span class='lines'>ビンゴ"+linesCount+"列</span>／":"";
-      return head+"その点数が出たらマスをタップ。<br>あと<b>"+(cfg.n-o)+"マス</b>。";
+      return head+(cfg.tap?"その点数が出たらマスをタップ。":"カラオケで出た点数を入力して「開ける」。")
+             +"<br>あと<b>"+(cfg.n-o)+"マス</b>。";
     }
     return "リセットの確認中です。";
   }
@@ -850,7 +940,8 @@
     if(busy||mode===m) return;
     mode=m;
     if(!CARD[m]) CARD[m]=fresh(m);
-    pendingOpen=null;
+    pendingList=null; pendingPick=null; pendingScore=null;
+    clearEntry();
     el.veilOpen.hidden=true;
     el.veilCenter.hidden=true;
     clearFx();
@@ -863,31 +954,128 @@
   /* ---------- taps ---------- */
   function onCell(i){
     var cfg=M(), s=S();
-    if(busy||s.phase==="finish") return;
-    if(s.phase==="create"){
-      if(!cfg.unique){ drawAll(); return; }
-      if(i===cfg.center){
-        if(s.cells[i].score===null&&filledOuter()===cfg.n-1) showCenter();
-        return;
-      }
-      if(s.cells[i].score!==null) return;
-      spin(i);
-      return;
-    }
+    if(busy) return;
     if(s.phase==="bingo"){
-      if(s.cells[i].open) return;
-      pendingOpen=i;
+      if(!cfg.tap||s.cells[i].open) return;
+      pendingList=[i];
+      pendingPick=i;
+      pendingScore=s.cells[i].score;
+      el.miniGrid.hidden=true;
+      el.openTitle.textContent="このマスを開けますか？";
       el.openScore.innerHTML=s.cells[i].score+"<span>点</span>";
+      el.openBody.textContent="開けたマスは元に戻せません。";
       el.veilOpen.hidden=false;
       document.getElementById("openYes").focus();
+      return;
     }
+    if(s.phase!=="create") return;
+    if(!cfg.unique){ drawAll(); return; }
+    if(i===cfg.center){
+      if(s.cells[i].score===null&&filledOuter()===cfg.n-1) showCenter();
+      return;
+    }
+    if(s.cells[i].score!==null) return;
+    spin(i);
   }
 
   document.addEventListener("click",function(e){
     if(busy||M().unique||S().phase!=="create") return;
-    if(e.target.closest&&e.target.closest(".mute, .modes, .seg-btn, .veil")) return;
+    if(e.target.closest&&e.target.closest(".mute, .modes, .seg-btn, .veil, .entrywrap")) return;
     drawAll();
   });
+
+  /* ---------- entering a score ---------- */
+  function sayMsg(text,info){
+    el.entryMsg.classList.toggle("info",!!info);
+    if(!text){ el.entryMsg.hidden=true; el.entryMsg.textContent=""; return; }
+    el.entryMsg.textContent=text;
+    el.entryMsg.hidden=false;
+  }
+  function where(i){
+    var side=M().side;
+    return (Math.floor(i/side)+1)+"行"+(i%side+1)+"列";
+  }
+  function clearEntry(){
+    el.scoreInput.value="";
+    sayMsg("");
+  }
+  el.scoreInput.addEventListener("input",function(){
+    this.value=this.value.replace(/[^0-9]/g,"");
+    sayMsg("");
+  });
+  el.entry.addEventListener("submit",function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    submitScore();
+  });
+
+  function submitScore(){
+    var cfg=M(), s=S();
+    if(busy||s.phase!=="bingo") return;
+    var raw=el.scoreInput.value.trim();
+    var lo=cfg.scores[0], hi=cfg.scores[cfg.scores.length-1];
+    if(!raw){ sayMsg("点数を入力してください。"); el.scoreInput.focus(); return; }
+    var v=parseInt(raw,10);
+    if(isNaN(v)||v<lo||v>hi||cfg.scores.indexOf(v)<0){
+      sayMsg("このカードの点数は"+lo+"〜"+hi+"点です。");
+      el.scoreInput.select();
+      return;
+    }
+    var hit=[],shut=0,i;
+    for(i=0;i<cfg.n;i++){
+      if(s.cells[i].score!==v) continue;
+      if(s.cells[i].open) shut++;
+      else hit.push(i);
+    }
+    if(!hit.length){
+      sayMsg(shut?(v+"点のマスはもう開いています。"):(v+"点はこのカードにありません。"));
+      el.scoreInput.select();
+      return;
+    }
+    pendingList=hit;          // 1曲につき1マス。複数あるときは選んでもらう
+    pendingPick=hit[0];
+    pendingScore=v;
+    el.scoreInput.blur();
+    el.openTitle.textContent="この点数で開けますか？";
+    el.openScore.innerHTML=v+"<span>点</span>";
+    if(hit.length>1){
+      buildMini();
+      el.openBody.textContent=v+"点のマスは残り"+hit.length+"つ。開けるマスを選んでください。元に戻せません。";
+    }else{
+      el.miniGrid.hidden=true;
+      el.openBody.textContent="開けたマスは元に戻せません。";
+    }
+    el.veilOpen.hidden=false;
+    document.getElementById("openYes").focus();
+  }
+
+  // 候補が複数あるときの縮小カード
+  function buildMini(){
+    var cfg=M(), s=S();
+    el.miniGrid.className="minigrid"+(cfg.side===4?" four":"");
+    el.miniGrid.innerHTML="";
+    for(var i=0;i<cfg.n;i++){
+      (function(i){
+        var c=s.cells[i];
+        var isCand=pendingList.indexOf(i)>=0;
+        var b=document.createElement(isCand?"button":"div");
+        if(isCand) b.type="button";
+        b.className="mini"+(c.open?" taken":"")+(isCand?" cand":"")+(i===pendingPick?" sel":"");
+        b.textContent=(c.score===null)?"":String(c.score);
+        if(isCand){
+          b.setAttribute("aria-pressed",i===pendingPick?"true":"false");
+          b.setAttribute("aria-label",where(i)+"の"+c.score+"点を開ける");
+          b.addEventListener("click",function(e){
+            e.stopPropagation();
+            pendingPick=i;
+            buildMini();
+          });
+        }
+        el.miniGrid.appendChild(b);
+      })(i);
+    }
+    el.miniGrid.hidden=false;
+  }
 
   /* ---------- 3x3: one square at a time ---------- */
   function spin(i){
@@ -1031,27 +1219,37 @@
   /* ---------- opening a square ---------- */
   document.getElementById("openYes").addEventListener("click",function(e){
     e.stopPropagation();
-    var i=pendingOpen, s=S(), cfg=M();
-    pendingOpen=null;
+    var list=(pendingPick===null)?null:[pendingPick];
+    var justScore=pendingScore, s=S(), cfg=M();
+    pendingList=null; pendingPick=null; pendingScore=null;
     el.veilOpen.hidden=true;
-    if(i===null){ render(); return; }
+    el.miniGrid.hidden=true;
+    if(!list||!list.length){ render(); return; }
 
     var before=litCells();
-    s.cells[i].open=true;
+    list.forEach(function(i){ s.cells[i].open=true; });
     save();
     var after=litCells();
     var gained=[],k;
     for(k in after.set) if(!before.set[k]) gained.push(Number(k));
 
-    fxPop=i;
+    fxPop={};
     fxCheer={};
+    list.forEach(function(i){ fxPop[i]=true; });
     gained.forEach(function(g){ fxCheer[g]=true; });
+    clearEntry();
     render();
-    fxPop=-1;
+    fxPop={};
     fxCheer={};
 
-    burstAt(el.board.children[i],GOLD,16,5.5);
+    list.forEach(function(i){ burstAt(el.board.children[i],GOLD,16,5.5); });
     sfxOpen();
+
+    if(justScore!==null&&s.phase==="bingo"){
+      var rest=0;
+      for(var q=0;q<cfg.n;q++) if(s.cells[q].score===justScore&&!s.cells[q].open) rest++;
+      if(rest) sayMsg(justScore+"点のマスはあと"+rest+"つ残っています。",true);
+    }
 
     var newLines=after.count-before.count;
     var done=(openCount()===cfg.n);
@@ -1074,8 +1272,13 @@
   });
   document.getElementById("openNo").addEventListener("click",function(e){
     e.stopPropagation();
-    pendingOpen=null;
+    pendingList=null; pendingPick=null; pendingScore=null;
     el.veilOpen.hidden=true;
+    el.miniGrid.hidden=true;
+    if(!el.entrywrap.hidden){
+      el.scoreInput.select();
+      el.scoreInput.focus();
+    }
   });
 
   /* ---------- reset ---------- */
@@ -1085,7 +1288,8 @@
     if(busy||s.phase==="finish") return;
     el.veilOpen.hidden=true;
     el.veilCenter.hidden=true;
-    pendingOpen=null;
+    pendingList=null; pendingPick=null; pendingScore=null;
+    clearEntry();
     s.prev=s.phase;
     s.phase="finish";
     save();
@@ -1094,6 +1298,7 @@
   document.getElementById("finishReset").addEventListener("click",function(e){
     e.stopPropagation();
     clearFx();
+    clearEntry();
     CARD[mode]=fresh(mode);
     save();
     render();
