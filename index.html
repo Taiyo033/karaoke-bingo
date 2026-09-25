@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>カラオケビンゴ</title>
-<meta name="description" content="3×3と4×4を切り替えて遊べるカラオケビンゴ。抽選した点数をカラオケで出せたらマスを開ける。">
+<meta name="description" content="3×3・4×4・5×5を切り替えて遊べるカラオケビンゴ。抽選した点数をカラオケで出せたらマスを開ける。">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="カラオケビンゴ">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:title" content="カラオケビンゴ">
-<meta property="og:description" content="点数を引いて、カラオケで出せたらマスを開ける。3×3と4×4。">
+<meta property="og:description" content="点数を引いて、カラオケで出せたらマスを開ける。3×3・4×4・5×5。">
 <meta property="og:image" content="icon-512.png">
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
@@ -101,7 +101,7 @@
     border-radius:999px;
   }
   .mode{
-    min-width:52px;min-height:32px;
+    flex:1;min-height:34px;
     display:flex;align-items:center;justify-content:center;
     border-radius:999px;
     font-family:Antonio,"Zen Kaku Gothic New",sans-serif;
@@ -193,6 +193,7 @@
   .boardwrap{position:relative}
   .board{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
   .board.four{grid-template-columns:repeat(4,1fr);gap:7px}
+  .board.five{grid-template-columns:repeat(5,1fr);gap:6px}
   .cell{
     position:relative;
     aspect-ratio:1;
@@ -205,6 +206,7 @@
     transition:border-color .2s,background .3s,box-shadow .3s,transform .12s;
   }
   .board.four .cell{--r-cell:12px}
+  .board.five .cell{--r-cell:10px}
   .cell .n{
     font-family:Antonio,"Zen Kaku Gothic New",sans-serif;
     font-weight:600;
@@ -215,8 +217,10 @@
     display:flex;align-items:baseline;
   }
   .board.four .cell .n{font-size:clamp(21px,7.2vw,32px)}
+  .board.five .cell .n{font-size:clamp(17px,5.7vw,26px)}
   .cell .unit{font-size:.36em;margin-left:.1em;font-weight:400;color:var(--ink-faint)}
   .board.four .cell .unit{font-size:.34em;margin-left:.08em}
+  .board.five .cell .unit{font-size:.32em;margin-left:.06em}
   .cell.is-empty .n{
     font-family:"Zen Kaku Gothic New",sans-serif;
     font-size:15px;font-weight:500;letter-spacing:.06em;
@@ -242,6 +246,7 @@
     opacity:.75;
   }
   .board.four .cell.open::before{border-width:2.5px;width:80%;height:80%}
+  .board.five .cell.open::before{border-width:2px;width:82%;height:82%}
   .cell.pop::before{animation:stamp .42s cubic-bezier(.18,1.6,.45,1) both}
   .cell.pop{animation:punch .42s cubic-bezier(.2,1.4,.4,1) both}
   .cell.pop::after{
@@ -374,6 +379,8 @@
   .btn-ghost{border:1px solid var(--line);color:var(--ink-dim)}
   .minigrid{display:grid;gap:5px;grid-template-columns:repeat(3,1fr)}
   .minigrid.four{grid-template-columns:repeat(4,1fr)}
+  .minigrid.five{grid-template-columns:repeat(5,1fr);gap:4px}
+  .minigrid.five .mini{font-size:12px;border-radius:6px}
   .mini{
     aspect-ratio:1;
     display:flex;align-items:center;justify-content:center;
@@ -426,10 +433,6 @@
 <main class="app">
   <div class="masthead">
     <h1>カラオケ<span class="mark">ビンゴ</span></h1>
-    <div class="modes" id="modes" role="group" aria-label="マスの数">
-      <button class="mode" id="mode3" type="button" aria-pressed="true">3×3</button>
-      <button class="mode" id="mode4" type="button" aria-pressed="false">4×4</button>
-    </div>
     <button class="mute" id="mute" type="button" aria-pressed="false" aria-label="音を消す">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
         <path d="M4 9.4h3.3L12 5.4v13.2L7.3 14.6H4z" fill="currentColor" stroke="none"></path>
@@ -438,6 +441,12 @@
         <path class="slash" d="M15.6 9.6l5 4.8m0-4.8l-5 4.8"></path>
       </svg>
     </button>
+  </div>
+
+  <div class="modes" id="modes" role="group" aria-label="マスの数">
+    <button class="mode" id="mode3" type="button" aria-pressed="true">3×3</button>
+    <button class="mode" id="mode4" type="button" aria-pressed="false">4×4</button>
+    <button class="mode" id="mode5" type="button" aria-pressed="false">5×5</button>
   </div>
 
   <div class="rail" role="group" aria-label="フェーズ">
@@ -527,14 +536,16 @@
   }
   var MODES={
     "3":{side:3,n:9,scores:[87,88,89,90,91,92,93,94,95,96],unique:true,center:4,tap:true,lines:lines(3)},
-    "4":{side:4,n:16,scores:[87,88,89,90,91,92,93,94,95],unique:false,center:-1,tap:false,lines:lines(4)}
+    "4":{side:4,n:16,scores:[87,88,89,90,91,92,93,94,95],unique:false,cap:3,capTop:2,center:-1,tap:false,lines:lines(4)},
+    "5":{side:5,n:25,scores:[87,88,89,90,91,92,93,94],unique:false,cap:5,capTop:4,center:-1,tap:false,lines:lines(5)}
   };
   var KEY="karaoke-bingo-v2";
   var OLD3="karaoke-bingo-3x3-v1", OLD4="karaoke-bingo-4x4-v1";
   var DRAW_MS=10000, FIRST_STOP=2600;
 
   var mode="3";
-  var CARD={"3":null,"4":null};
+  var CARD={"3":null,"4":null,"5":null};
+  var SIZES=["3","4","5"];
   var busy=false;
   var pendingList=null;     // 確認中の候補マス
   var pendingPick=null;     // そのうち開けるマス
@@ -552,6 +563,7 @@
     chips:document.getElementById("chips"),
     mode3:document.getElementById("mode3"),
     mode4:document.getElementById("mode4"),
+    mode5:document.getElementById("mode5"),
     segCreate:document.getElementById("segCreate"),
     segBingo:document.getElementById("segBingo"),
     segReset:document.getElementById("segReset"),
@@ -618,15 +630,12 @@
       if(raw){
         var o=JSON.parse(raw);
         if(o&&o.cards){
-          got={
-            mode:(o.mode==="4")?"4":"3",
-            "3":valid("3",o.cards["3"]),
-            "4":valid("4",o.cards["4"])
-          };
+          got={mode:(SIZES.indexOf(o.mode)>=0)?o.mode:"3"};
+          SIZES.forEach(function(m){ got[m]=valid(m,o.cards[m]); });
         }
       }
     }catch(e){ got=null; }
-    if(!got) got={mode:"3","3":null,"4":null};
+    if(!got) got={mode:"3","3":null,"4":null,"5":null};
     // 旧バージョンで遊んでいたカードを引き継ぐ
     if(!got["3"]) got["3"]=readOld(OLD3,"3");
     if(!got["4"]) got["4"]=readOld(OLD4,"4");
@@ -816,13 +825,15 @@
   }
 
   /* ---------- render ---------- */
+  function sizeClass(side){ return side===4?" four":(side===5?" five":""); }
+
   function render(){
     var cfg=M(), s=S(), lit=litCells();
 
-    el.mode3.classList.toggle("on",mode==="3");
-    el.mode4.classList.toggle("on",mode==="4");
-    el.mode3.setAttribute("aria-pressed",mode==="3");
-    el.mode4.setAttribute("aria-pressed",mode==="4");
+    SIZES.forEach(function(m){
+      el["mode"+m].classList.toggle("on",mode===m);
+      el["mode"+m].setAttribute("aria-pressed",mode===m);
+    });
 
     el.segCreate.classList.toggle("on",s.phase==="create");
     el.segBingo.classList.toggle("on",s.phase==="bingo");
@@ -830,7 +841,7 @@
     el.segCreate.setAttribute("aria-current",s.phase==="create");
     el.segBingo.setAttribute("aria-current",s.phase==="bingo");
 
-    el.board.classList.toggle("four",cfg.side===4);
+    el.board.className="board"+sizeClass(cfg.side);
     el.board.innerHTML="";
     for(var i=0;i<cfg.n;i++){
       (function(i){
@@ -922,8 +933,8 @@
         if(s.cells[cfg.center].score===null) return "真ん中のマスをタップして、<b>残り2つ</b>から点数を選んでください。";
         return "カードが完成しました。";
       }
-      if(busy) return "抽選中。16マスが左上から順に止まります。";
-      return "画面のどこかをタップすると、16マス全部のルーレットが<br>一斉に回ります。同じ点数が重なることもあります。";
+      if(busy) return "抽選中。"+cfg.n+"マスが左上から順に止まります。";
+      return "画面のどこかをタップすると、"+cfg.n+"マス全部のルーレットが<br>一斉に回ります。同じ点数が重なることもあります。";
     }
     if(s.phase==="bingo"){
       var o=openCount();
@@ -948,8 +959,9 @@
     save();
     render();
   }
-  el.mode3.addEventListener("click",function(e){ e.stopPropagation(); setMode("3"); });
-  el.mode4.addEventListener("click",function(e){ e.stopPropagation(); setMode("4"); });
+  SIZES.forEach(function(m){
+    el["mode"+m].addEventListener("click",function(e){ e.stopPropagation(); setMode(m); });
+  });
 
   /* ---------- taps ---------- */
   function onCell(i){
@@ -1052,7 +1064,7 @@
   // 候補が複数あるときの縮小カード
   function buildMini(){
     var cfg=M(), s=S();
-    el.miniGrid.className="minigrid"+(cfg.side===4?" four":"");
+    el.miniGrid.className="minigrid"+sizeClass(cfg.side);
     el.miniGrid.innerHTML="";
     for(var i=0;i<cfg.n;i++){
       (function(i){
@@ -1150,8 +1162,19 @@
     if(busy||cfg.unique||s.phase!=="create") return;
     busy=true;
     ac();
-    var finals=[],i;
-    for(i=0;i<cfg.n;i++) finals.push(cfg.scores[(Math.random()*cfg.scores.length)|0]);
+    // 同じ点数は cfg.cap マスまで、最高点だけ cfg.capTop マスまで。
+    // 上限に達した点数は以降の抽選から外す
+    var finals=[],i,used={},room;
+    var top=cfg.scores[cfg.scores.length-1];
+    function capOf(v){ return (v===top)?cfg.capTop:cfg.cap; }
+    cfg.scores.forEach(function(v){ used[v]=0; });
+    for(i=0;i<cfg.n;i++){
+      room=cfg.scores.filter(function(v){ return used[v]<capOf(v); });
+      if(!room.length) room=cfg.scores.slice();
+      var got=room[(Math.random()*room.length)|0];
+      used[got]++;
+      finals.push(got);
+    }
 
     render();
     el.cta.hidden=true;
@@ -1316,13 +1339,11 @@
   function start(seed){
     var got=load();
     if(seed&&seed.cards){
-      if(!got["3"]) got["3"]=valid("3",seed.cards["3"]);
-      if(!got["4"]) got["4"]=valid("4",seed.cards["4"]);
-      if(seed.mode==="3"||seed.mode==="4") got.mode=seed.mode;
+      SIZES.forEach(function(m){ if(!got[m]) got[m]=valid(m,seed.cards[m]); });
+      if(SIZES.indexOf(seed.mode)>=0) got.mode=seed.mode;
     }
     mode=got.mode;
-    CARD["3"]=got["3"]||fresh("3");
-    CARD["4"]=got["4"]||fresh("4");
+    SIZES.forEach(function(m){ CARD[m]=got[m]||fresh(m); });
     render();
   }
   try{
